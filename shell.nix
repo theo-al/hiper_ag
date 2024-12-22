@@ -11,9 +11,12 @@ pkgs.mkShell {
   ];
   shellHook = ''
     set +ex
-    uv venv --system-site-packages
+    if [ ! -d ".venv" ]; then
+      uv venv --system-site-packages
+      uv pip install geneticalgorithm2
+      uv pip uninstall numpy
+    fi
     source .venv/bin/activate
-    uv pip install geneticalgorithm2
   '';
 }
 
