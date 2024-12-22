@@ -1,7 +1,6 @@
 import numpy as np
 from   numpy.typing import NDArray
 
-import math
 from typing import Callable, Optional
 
 from geneticalgorithm2 import geneticalgorithm2 as ga
@@ -9,6 +8,9 @@ from geneticalgorithm2 import Callbacks, Population_initializer
 
 import matplotlib.pyplot as plt
 
+
+## alias
+isdtype = np.issubdtype
 
 ## limites do espaço de busca para as variáveis
 num_vars = 2
@@ -55,13 +57,7 @@ algo_params = {
   
 ## Função do problema
 def Rastrigin(X: NDArray):
-    OF = 0
-    for i in range(len(X)):
-        OF += (X[i]**2)-10*math.cos(2*math.pi*X[i])+10
-    return OF 
-
-# def Rastringin(X: NDArray):
-#     return sum(map(lambda x: (x**2) - 10*math.cos(2*math.pi*x) + 10, X))  
+    return np.sum(np.square(X) - 10*np.cos(2*np.pi*X) + 10)
 
 ## simulações
 def make_model(algo_params: dict,
@@ -72,16 +68,16 @@ def make_model(algo_params: dict,
     if   var_type == 'bool': var_bound = None
     elif var_bound is not None:
         var_type = var_type if var_type is not None else \
-                   ['real' if np.issubdtype(bound.dtype, np.floating) else \
-                    'int'  if np.issubdtype(bound.dtype, np.integer)  else 'bool'
+                   ['real' if isdtype(bound.dtype, np.floating) else \
+                    'int'  if isdtype(bound.dtype, np.integer)  else 'bool'
                            for bound in var_bound]
     else:
-        raise ValueError("You need to specify both variable boundaries and variable types")
+        raise ValueError("'var_type' and 'var_bound' may only be None if there if their values can be inferred from the rest")
 
     if var_num is None:
         if var_bound is not None: var_num = len(var_bound)
         else: 
-            raise ValueError("You need to specify both variable boundaries and number")
+            raise ValueError("'var_num' may only be None if 'var_bound' isn't")
 
     model = ga(variable_boundaries=var_bound,
                variable_type=var_type,
@@ -92,8 +88,8 @@ def make_model(algo_params: dict,
 
 
 def simulate(func: Callable[[NDArray], float], num_experiments: int, model: ga, *,
-             seed: int=42, plot: bool=False,
-             save_path="graficos/", save_prefix=""):
+             seed: int=42, plot: bool=False, save_path="graficos/", save_prefix=""):
+
     simulations = []
     for simu in range(num_experiments):
         print('-------------------------------------------------------------------')
@@ -134,7 +130,7 @@ def simulate(func: Callable[[NDArray], float], num_experiments: int, model: ga, 
             model.plot_generation_scores(title=f"Avaliações da última geração (nº {len(convergence)}) do experimento {simu}", 
                                          save_as=f"{save_path}{save_prefix}experimento{simu}solucao.png") #!
 
-        print(f"Melhores indivíduos por geração: {convergence}")
+        print(f"Melhores indivíduos por geração: \n{convergence}")
         print()
         
         simulations.append(convergence)
