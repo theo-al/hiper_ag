@@ -89,11 +89,12 @@ def make_model(algo_params: dict,
 
 def simulate(func: Callable[[NDArray], float], num_experiments: int, model: ga, *,
              seed: int=42, plot: bool=False, save_path="graficos/", save_prefix=""):
+    num_generations = model.param.max_num_iteration
 
-    simulations = []
-    for simu in range(num_experiments):
+    simulations = np.zeros((num_experiments, num_generations))
+    for i in range(num_experiments):
         print('-------------------------------------------------------------------')
-        print(f'Experimento número {simu}:')
+        print(f'Experimento número {i}:')
 
         solution = model.run(function=func,
                              no_plot=True,
@@ -122,27 +123,24 @@ def simulate(func: Callable[[NDArray], float], num_experiments: int, model: ga, 
                              save_last_generation_as=None,
                              seed=seed) 
 
-        convergence = model.report
+        convergence = np.array(model.report)
 
         if plot:
-            model.plot_results(title=f"Busca do ótimo para função {func.__name__}, experimento {simu}",
-                               save_as=f"{save_path}{save_prefix}experimento{simu}convergencia.png", main_color='green')
-            model.plot_generation_scores(title=f"Avaliações da última geração (nº {len(convergence)}) do experimento {simu}", 
-                                         save_as=f"{save_path}{save_prefix}experimento{simu}solucao.png") #!
+            model.plot_results(title=f"Busca do ótimo para função {func.__name__}, experimento {i}",
+                               save_as=f"{save_path}{save_prefix}experimento{i}convergencia.png", main_color='green')
+            model.plot_generation_scores(title=f"Avaliações da última geração (nº {len(convergence)}) do experimento {i}", 
+                                         save_as=f"{save_path}{save_prefix}experimento{i}solucao.png") #!
 
         print(f"Melhores indivíduos por geração: \n{convergence}")
         print()
         
-        simulations.append(convergence)
+        simulations[i] = convergence
 
         seed = hash(seed + 3)
 
-    simulation_averages = []
-    for i in range(num_generations):
-        generation_sim_sum = 0
-        for j in range(num_experiments):
-            generation_sim_sum += simulations[j][i]
-        simulation_averages.append(generation_sim_sum/num_experiments)
+    simulation_averages = np.zeros(num_generations)
+    for i, gen in enumerate(simulations.transpose()):
+        simulation_averages[i] = np.sum(gen)/num_experiments
 
     return simulation_averages
 
