@@ -7,6 +7,9 @@ from geneticalgorithm2 import geneticalgorithm2 as ga
 from geneticalgorithm2 import Callbacks, Population_initializer
 
 from contextlib import redirect_stdout
+
+from sys import stdout
+from os  import devnull
  
 
 ## alias
@@ -41,40 +44,43 @@ def make_model(params: dict,
 
 
 def get_simulation_averages(func: Callable[[NDArray], float], num_experiments: int, model: ga, *,
-                            seed: int=42, plot: bool=False, save_path="graficos/", save_prefix=""):
+                            seed: int=42, plot: bool=False, verbose=False, save_path="graficos/", save_prefix=""):
     num_generations = model.param.max_num_iteration
+
+    ga_out = stdout if verbose else open(devnull, 'w')
 
     simulations = np.zeros((num_experiments, num_generations))
     for i in range(num_experiments):
         print('-------------------------------------------------------------------')
         print(f'Experimento número {i}:')
 
-        solution = model.run(function=func,
-                             no_plot=True,
-                             start_generation={'variables': None, 'scores': None},
-                             studEA=True,
-                             revolution_part=0,
-                             remove_duplicates_generation_step=2,
-                             population_initializer=Population_initializer(select_best_of=1,
-                                                                           local_optimization_step='never',
-                                                                           local_optimizer=None),
-                             callbacks=[Callbacks.SavePopulation('callback_pop_example',
-                                                                  save_gen_step=1,
-                                                                  file_prefix='constraints'),
-                                        Callbacks.PlotOptimizationProcess('callback_plot_example',
-                                                                           save_gen_step=300,
-                                                                           show=False,
-                                                                           main_color='red',
-                                                                           file_prefix='plot')],                            
-                             middle_callbacks=[],
+        with redirect_stdout(ga_out):
+            solution = model.run(function=func,
+                                 no_plot=True,
+                                 start_generation={'variables': None, 'scores': None},
+                                 studEA=True,
+                                 revolution_part=0,
+                                 remove_duplicates_generation_step=2,
+                                 population_initializer=Population_initializer(select_best_of=1,
+                                                                               local_optimization_step='never',
+                                                                               local_optimizer=None),
+                                 callbacks=[Callbacks.SavePopulation('callback_pop_example',
+                                                                      save_gen_step=1,
+                                                                      file_prefix='constraints'),
+                                            Callbacks.PlotOptimizationProcess('callback_plot_example',
+                                                                               save_gen_step=300,
+                                                                               show=False,
+                                                                               main_color='red',
+                                                                               file_prefix='plot')],                            
+                                 middle_callbacks=[],
 
-                             apply_function_to_parents=False, 
-                             mutation_indexes=None,
-                             revolution_after_stagnation_step=None,
-                             stop_when_reached=None,
-                             time_limit_secs=None, 
-                             save_last_generation_as=None,
-                             seed=seed) 
+                                 apply_function_to_parents=False, 
+                                 mutation_indexes=None,
+                                 revolution_after_stagnation_step=None,
+                                 stop_when_reached=None,
+                                 time_limit_secs=None, 
+                                 save_last_generation_as=None,
+                                 seed=seed) 
 
         convergence = np.array(model.report)
 

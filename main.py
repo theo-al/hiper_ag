@@ -56,7 +56,7 @@ hyperparams = {
 num_experiments = 10
 
 model = make_model(hyperparams, var_bounds)
-avgs  = get_simulation_averages(Rastrigin, num_experiments, model)
+avgs  = get_simulation_averages(Rastrigin, num_experiments, model)#, silence=True)
 
 print('------------------------------------------------------------------------')    
 print('Valores médios dos melhores por Geração:')
