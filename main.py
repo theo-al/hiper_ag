@@ -1,20 +1,20 @@
 import numpy as np
 from   numpy.typing import NDArray
 
-from typing import Callable, Optional
-
-from geneticalgorithm2 import geneticalgorithm2 as ga
-from geneticalgorithm2 import Callbacks, Population_initializer
-
 import matplotlib.pyplot as plt
 
+from hyper_eval import make_model, get_simulation_averages
 
-## alias
-isdtype = np.issubdtype
+ 
+## Função do problema
+def Rastrigin(X: NDArray):
+    return np.sum(np.square(X) - 10*np.cos(2*np.pi*X) + 10)
+
 
 ## limites do espaço de busca para as variáveis
 num_vars = 2
-var_bound = np.array([[-5.12, 5.12]]*num_vars)
+var_bounds = np.array([[-5.12, 5.12]]*num_vars)
+
 
 ## parâmetros do AG
 num_generations      = 20
@@ -34,10 +34,8 @@ parents_portion = .1 # zero significa que toda a população é
 crossover_type = 'one_point'
 selection_type = 'roulette'
 mutation_type  = 'uniform_by_center' # acho que é pra deixar fixo
-
-num_experiments = 5 # número de rodadas sucessivas
                    
-algo_params = {
+hyperparams = {
     'max_num_iteration': num_generations,
     'population_size':   population_size,
     'elit_ratio':        elite_ratio,
@@ -54,98 +52,11 @@ algo_params = {
     'max_iteration_without_improv': None,
 }
 
-  
-## Função do problema
-def Rastrigin(X: NDArray):
-    return np.sum(np.square(X) - 10*np.cos(2*np.pi*X) + 10)
+## roda a simulação e mostra o resultado da parametrização
+num_experiments = 10
 
-## simulações
-def make_model(algo_params: dict,
-               var_bound: Optional[NDArray]=None,
-               var_type:  Optional[str | list[str]]=None,
-               var_num:   Optional[int]=None):
-
-    if   var_type == 'bool': var_bound = None
-    elif var_bound is not None:
-        var_type = var_type if var_type is not None else \
-                   ['real' if isdtype(bound.dtype, np.floating) else \
-                    'int'  if isdtype(bound.dtype, np.integer)  else 'bool'
-                           for bound in var_bound]
-    else:
-        raise ValueError("'var_type' and 'var_bound' may only be None if there if their values can be inferred from the rest")
-
-    if var_num is None:
-        if var_bound is not None: var_num = len(var_bound)
-        else: 
-            raise ValueError("'var_num' may only be None if 'var_bound' isn't")
-
-    model = ga(variable_boundaries=var_bound,
-               variable_type=var_type,
-               dimension=var_num,
-               algorithm_parameters=algo_params)
-
-    return model
-
-
-def simulate(func: Callable[[NDArray], float], num_experiments: int, model: ga, *,
-             seed: int=42, plot: bool=False, save_path="graficos/", save_prefix=""):
-    num_generations = model.param.max_num_iteration
-
-    simulations = np.zeros((num_experiments, num_generations))
-    for i in range(num_experiments):
-        print('-------------------------------------------------------------------')
-        print(f'Experimento número {i}:')
-
-        solution = model.run(function=func,
-                             no_plot=True,
-                             start_generation={'variables': None, 'scores': None},
-                             studEA=True,
-                             revolution_part=0,
-                             remove_duplicates_generation_step=2,
-                             population_initializer=Population_initializer(select_best_of=1,
-                                                                           local_optimization_step='never',
-                                                                           local_optimizer=None),
-                             callbacks=[Callbacks.SavePopulation('callback_pop_example',
-                                                                  save_gen_step=1,
-                                                                  file_prefix='constraints'),
-                                        Callbacks.PlotOptimizationProcess('callback_plot_example',
-                                                                           save_gen_step=300,
-                                                                           show=False,
-                                                                           main_color='red',
-                                                                           file_prefix='plot')],                            
-                             middle_callbacks=[],
-
-                             apply_function_to_parents=False, 
-                             mutation_indexes=None,
-                             revolution_after_stagnation_step=None,
-                             stop_when_reached=None,
-                             time_limit_secs=None, 
-                             save_last_generation_as=None,
-                             seed=seed) 
-
-        convergence = np.array(model.report)
-
-        if plot:
-            model.plot_results(title=f"Busca do ótimo para função {func.__name__}, experimento {i}",
-                               save_as=f"{save_path}{save_prefix}experimento{i}convergencia.png", main_color='green')
-            model.plot_generation_scores(title=f"Avaliações da última geração (nº {len(convergence)}) do experimento {i}", 
-                                         save_as=f"{save_path}{save_prefix}experimento{i}solucao.png") #!
-
-        print(f"Melhores indivíduos por geração: \n{convergence}")
-        print()
-        
-        simulations[i] = convergence
-
-        seed = hash(seed + 3)
-
-    simulation_averages = np.zeros(num_generations)
-    for i, gen in enumerate(simulations.transpose()):
-        simulation_averages[i] = np.sum(gen)/num_experiments
-
-    return simulation_averages
-
-model = make_model(algo_params, var_bound)
-avgs  = simulate(Rastrigin, num_experiments, model)
+model = make_model(hyperparams, var_bounds)
+avgs  = get_simulation_averages(Rastrigin, num_experiments, model)
 
 print('------------------------------------------------------------------------')    
 print('Valores médios dos melhores por Geração:')
