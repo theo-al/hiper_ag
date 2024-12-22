@@ -2,31 +2,20 @@ import numpy as np
 from   numpy.typing import NDArray
 
 import math
+from typing import Callable, Optional
 
 from geneticalgorithm2 import geneticalgorithm2 as ga
-from geneticalgorithm2 import Callbacks
-from geneticalgorithm2 import Population_initializer
+from geneticalgorithm2 import Callbacks, Population_initializer
 
 import matplotlib.pyplot as plt
 
 
-## Função do problema
-def f(X: NDArray):
-    OF = 0
-    for i in range(len(X)):
-        OF += (X[i]**2)-10*math.cos(2*math.pi*X[i])+10
-    return OF 
-
-# def _f(x: float): return (x**2)-10*math.cos(2*math.pi*x)+10
-# def  f(X: NDArray):
-#     return sum(map(_f, X))
-
-
 ## limites do espaço de busca para as variáveis
-var_bound = np.array([[-5.12, 5.12]]*2)
+num_vars = 2
+var_bound = np.array([[-5.12, 5.12]]*num_vars)
 
 ## parâmetros do AG
-num_generations      = 20  # número de gerações
+num_generations      = 20
 population_size      = 100
 mutation_probability = .001
 
@@ -63,76 +52,116 @@ algo_params = {
     'max_iteration_without_improv': None,
 }
 
-model = ga(variable_boundaries=var_bound,
-           variable_type='real',
-           dimension=len(var_bound),
-           algorithm_parameters=algo_params)
-    
+  
+## Função do problema
+def Rastrigin(X: NDArray):
+    OF = 0
+    for i in range(len(X)):
+        OF += (X[i]**2)-10*math.cos(2*math.pi*X[i])+10
+    return OF 
+
+# def Rastringin(X: NDArray):
+#     return sum(map(lambda x: (x**2) - 10*math.cos(2*math.pi*x) + 10, X))  
+
 ## simulações
-simulations = []
-for simu in range(num_experiments):
-    print('-------------------------------------------------------------------')
-    print(f'Experimento número {simu}:')
+def make_model(algo_params: dict,
+               var_bound: Optional[NDArray]=None,
+               var_type:  Optional[str | list[str]]=None,
+               var_num:   Optional[int]=None):
 
-    model.run(function=f,
-              start_generation={'variables': None, 'scores': None},
-              studEA=True,
-              revolution_part=0,
-              remove_duplicates_generation_step=2,
-              population_initializer=Population_initializer(select_best_of=1,
-                                                            local_optimization_step='never',
-                                                            local_optimizer=None),
-              callbacks=[Callbacks.SavePopulation('callback_pop_example',
-                                                  save_gen_step=1,
-                                                  file_prefix='constraints'),
-                         Callbacks.PlotOptimizationProcess('callback_plot_example',
-                                                           save_gen_step=300,
-                                                           show=False,
-                                                           main_color='red',
-                                                           file_prefix='plot')],                            
-              middle_callbacks=[],
+    if   var_type == 'bool': var_bound = None
+    elif var_bound is not None:
+        var_type = var_type if var_type is not None else \
+                   ['real' if np.issubdtype(bound.dtype, np.floating) else \
+                    'int'  if np.issubdtype(bound.dtype, np.integer)  else 'bool'
+                           for bound in var_bound]
+    else:
+        raise ValueError("You need to specify both variable boundaries and variable types")
 
-              apply_function_to_parents=False, 
-              mutation_indexes=None,
-              init_creator=None,
-              init_oppositors=None,
-              duplicates_oppositor=None,
-              revolution_oppositor=None,
-              revolution_after_stagnation_step=None,
-              stop_when_reached=None,
-              time_limit_secs=None, 
-              save_last_generation_as=None,
-              seed=None)
- 
-    # title = f"Busca do ótimo para {type(f).__name__}"
-    # model.plot_results(title=title, save_as=f"{title}.png", main_color='green')
-    model.plot_generation_scores()
-	
-    convergence = model.report
-    print(f"Melhores indivíduos por geração: {convergence}")
-    print()
-    
-    simulations.append(convergence)
+    if var_num is None:
+        if var_bound is not None: var_num = len(var_bound)
+        else: 
+            raise ValueError("You need to specify both variable boundaries and number")
 
-simulation_averages = [] # average?
-for i in range(num_generations):
-    generation_sim_sum = 0
-    for j in range(num_experiments):
-        generation_sim_sum += simulations[j][i]
-    simulation_averages.append(generation_sim_sum/num_experiments)
+    model = ga(variable_boundaries=var_bound,
+               variable_type=var_type,
+               dimension=var_num,
+               algorithm_parameters=algo_params)
 
+    return model
+
+
+def simulate(func: Callable[[NDArray], float], num_experiments: int, model: ga, *,
+             seed: int=42, plot: bool=False,
+             save_path="graficos/", save_prefix=""):
+    simulations = []
+    for simu in range(num_experiments):
+        print('-------------------------------------------------------------------')
+        print(f'Experimento número {simu}:')
+
+        solution = model.run(function=func,
+                             no_plot=True,
+                             start_generation={'variables': None, 'scores': None},
+                             studEA=True,
+                             revolution_part=0,
+                             remove_duplicates_generation_step=2,
+                             population_initializer=Population_initializer(select_best_of=1,
+                                                                           local_optimization_step='never',
+                                                                           local_optimizer=None),
+                             callbacks=[Callbacks.SavePopulation('callback_pop_example',
+                                                                  save_gen_step=1,
+                                                                  file_prefix='constraints'),
+                                        Callbacks.PlotOptimizationProcess('callback_plot_example',
+                                                                           save_gen_step=300,
+                                                                           show=False,
+                                                                           main_color='red',
+                                                                           file_prefix='plot')],                            
+                             middle_callbacks=[],
+
+                             apply_function_to_parents=False, 
+                             mutation_indexes=None,
+                             revolution_after_stagnation_step=None,
+                             stop_when_reached=None,
+                             time_limit_secs=None, 
+                             save_last_generation_as=None,
+                             seed=seed) 
+
+        convergence = model.report
+
+        if plot:
+            model.plot_results(title=f"Busca do ótimo para função {func.__name__}, experimento {simu}",
+                               save_as=f"{save_path}{save_prefix}experimento{simu}convergencia.png", main_color='green')
+            model.plot_generation_scores(title=f"Avaliações da última geração (nº {len(convergence)}) do experimento {simu}", 
+                                         save_as=f"{save_path}{save_prefix}experimento{simu}solucao.png") #!
+
+        print(f"Melhores indivíduos por geração: {convergence}")
+        print()
+        
+        simulations.append(convergence)
+
+        seed = hash(seed + 3)
+
+    simulation_averages = []
+    for i in range(num_generations):
+        generation_sim_sum = 0
+        for j in range(num_experiments):
+            generation_sim_sum += simulations[j][i]
+        simulation_averages.append(generation_sim_sum/num_experiments)
+
+    return simulation_averages
+
+model = make_model(algo_params, var_bound)
+avgs  = simulate(Rastrigin, num_experiments, model)
 
 print('------------------------------------------------------------------------')    
 print('Valores médios dos melhores por Geração:')
-print(simulation_averages)
-print()
+print(avgs)
 
 fig1, ax1 = plt.subplots()
 ax1.set_title('Média dos Melhores por Geração')
-ax1.boxplot(simulation_averages)
+ax1.boxplot(avgs)
 plt.show()
 
-plt.plot(simulation_averages,
-         label='Média dos Melhores por Geração')
+plt.plot(avgs, label='Média dos Melhores por Geração')
 plt.legend(loc='upper right')
 plt.show()
