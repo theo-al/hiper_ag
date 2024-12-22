@@ -3,7 +3,7 @@ from   numpy.typing import NDArray
 
 import matplotlib.pyplot as plt
 
-from hyper_eval import make_model, get_simulation_averages
+from hyper_eval import make_model, get_simulation_info
 
  
 ## Função do problema
@@ -52,21 +52,88 @@ hyperparams = {
     'max_iteration_without_improv': None,
 }
 
-## roda a simulação e mostra o resultado da parametrização
+## parâmetros da avaliação
 num_experiments = 10
 
-model = make_model(hyperparams, var_bounds)
-avgs  = get_simulation_averages(Rastrigin, num_experiments, model)#, silence=True)
+universes = {
+    'max_num_iteration': np.arange(5, 105, 100//6),
+    'population_size':   np.arange(5, 155, 150//6),
 
-print('------------------------------------------------------------------------')    
-print('Valores médios dos melhores por Geração:')
-print(avgs)
+    'elit_ratio':            np.linspace(.01, .50, num=3),
+    'mutation_probability':  np.linspace(.01, .70, num=5),
+    'crossover_probability': np.linspace(.01, .90, num=5),
+    'parents_portion':       np.linspace(.01, .90, num=5),
 
-fig1, ax1 = plt.subplots()
-ax1.set_title('Média dos Melhores por Geração')
-ax1.boxplot(avgs)
-plt.show()
+    'mutation_type': (
+        'uniform_by_x',
+        'uniform_by_center',
+        'gauss_by_center',
+        'gauss_by_x',
+        #'uniform_discrete',
+    ),
 
-plt.plot(avgs, label='Média dos Melhores por Geração')
-plt.legend(loc='upper right')
-plt.show()
+    # nesse caso, como são duas variáveis, o crossover só seria significantemente
+    # diferente reordenando ou combinando os valores dos genes
+    'crossover_type': (
+        'uniform',
+        'one_point',
+        'two_point',
+        'segment',
+        'shuffle',
+    ),
+    'selection_type': (
+        'roulette',
+        'ranking',
+        'linear_ranking',
+        'tournament',
+        'sigma_scaling',
+        'stochastic',
+        'fully_random',
+    ),
+
+    'max_iteration_without_improv': (None, 1, 3, 7, 15), #!
+}
+fmts = {
+    'max_num_iteration': '',
+    'population_size':   '',
+
+    'elit_ratio':            '.2f',
+    'mutation_probability':  '.2f',
+    'crossover_probability': '.2f',
+    'parents_portion':       '.2f',
+
+    'mutation_type':  '',
+    'crossover_type': '',
+    'selection_type': '',
+    'max_iteration_without_improv': '',
+}
+
+## roda a simulação e salva o resultado das parametrizações
+for param in hyperparams:
+    params = hyperparams.copy()
+    fmt = fmts[param]
+
+    for sample in universes[param]:
+        print('------------------------------------------------------------------------')    
+        print(f'parâmetro atual: {param}; amostra atual: {sample:{fmt}}')
+
+        params[param] = sample
+        try:
+            model = make_model(params, var_bounds)
+            avgs, curr_sz = get_simulation_info(model, num_experiments, func=Rastrigin)
+        except (AssertionError, ZeroDivisionError) as e:
+            print(f"{param}={sample}: {e}")
+            continue
+
+        print(f'Valores médios dos melhores por Geração:')
+        print(avgs)
+
+        plt.plot(avgs, label=f'{param}={sample:{fmt}}')
+        last_color = plt.gca().lines[-1].get_color()
+        plt.plot([curr_sz-1], [avgs[-1]],
+                 marker='o', color=last_color)
+        plt.legend(loc='upper right')
+
+    #! setar seed
+    plt.savefig(f"graficos/{param}.png")
+    plt.cla()

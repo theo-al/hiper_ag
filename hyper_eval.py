@@ -3,14 +3,10 @@ from   numpy.typing import NDArray
 
 from typing import Callable, Optional
 
-from geneticalgorithm2 import geneticalgorithm2 as ga
+from geneticalgorithm2 import geneticalgorithm2 as gen_alg2
 from geneticalgorithm2 import Callbacks, Population_initializer
 
-from contextlib import redirect_stdout
-
-from sys import stdout
-from os  import devnull
- 
+from silencer import silence
 
 ## alias
 isdtype = np.issubdtype
@@ -35,26 +31,26 @@ def make_model(params: dict,
         else: 
             raise ValueError("'var_num' may only be None if 'var_bound' isn't")
 
-    model = ga(variable_boundaries=var_bounds,
-               variable_type=var_types,
-               dimension=num_vars,
-               algorithm_parameters=params)
+    with silence(out=False, err=True):
+        model = gen_alg2(variable_boundaries=var_bounds,
+                        variable_type=var_types,
+                        dimension=num_vars,
+                        algorithm_parameters=params)
 
     return model
 
-
-def get_simulation_averages(func: Callable[[NDArray], float], num_experiments: int, model: ga, *,
-                            seed: int=42, plot: bool=False, verbose=False, save_path="graficos/", save_prefix=""):
+def get_simulation_info(model: gen_alg2, num_experiments: int, *,
+                        func: Callable[[NDArray], float], verbosity=0) -> list[float]:
     num_generations = model.param.max_num_iteration
 
-    ga_out = stdout if verbose else open(devnull, 'w')
+    ga_out, ga_err = verbosity < 2, verbosity < 1
 
-    simulations = np.zeros((num_experiments, num_generations))
+    simulation_szs = np.zeros(num_experiments)
+    simulations = np.zeros((num_experiments,
+                            num_generations))
+
     for i in range(num_experiments):
-        print('-------------------------------------------------------------------')
-        print(f'Experimento número {i}:')
-
-        with redirect_stdout(ga_out):
+        with silence(ga_out, ga_err):
             solution = model.run(function=func,
                                  no_plot=True,
                                  start_generation={'variables': None, 'scores': None},
@@ -80,25 +76,18 @@ def get_simulation_averages(func: Callable[[NDArray], float], num_experiments: i
                                  stop_when_reached=None,
                                  time_limit_secs=None, 
                                  save_last_generation_as=None,
-                                 seed=seed) 
+                                 seed=None) 
 
-        convergence = np.array(model.report)
-
-        if plot:
-            model.plot_results(title=f"Busca do ótimo para função {func.__name__}, experimento {i}",
-                               save_as=f"{save_path}{save_prefix}experimento{i}convergencia.png", main_color='green')
-            model.plot_generation_scores(title=f"Avaliações da última geração (nº {len(convergence)}) do experimento {i}", 
-                                         save_as=f"{save_path}{save_prefix}experimento{i}solucao.png") #!
-
-        print(f"Melhores indivíduos por geração: \n{convergence}")
-        print()
-        
-        simulations[i] = convergence
-
-        seed = hash(seed + 3)
+        convergence   = np.array(model.report)
+        curr_num_gens = len(convergence)
+        simulations[i] = np.append(
+            convergence, np.full(num_generations - curr_num_gens, None)
+        )
+        simulation_szs[i] = curr_num_gens
 
     simulation_averages = np.zeros(num_generations)
     for i, gen in enumerate(simulations.transpose()):
         simulation_averages[i] = np.sum(gen)/num_experiments
 
-    return simulation_averages
+    avg_num_gens = np.sum(simulation_szs)/num_experiments
+    return simulation_averages, avg_num_gens
