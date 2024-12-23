@@ -6,7 +6,11 @@ import matplotlib.pyplot as plt
 from hyper_eval import make_model, get_simulation_info
 from typing     import NamedTuple, Iterable, Optional
 
+
+## constantes
+PLOT_DIR = 'graficos'
  
+
 ## função do problema
 def Rastrigin(X: NDArray):
     return np.sum(np.square(X) - 10*np.cos(2*np.pi*X) + 10)
@@ -37,9 +41,7 @@ selection_type = 'roulette'
 mutation_type  = 'uniform_by_center' # acho que é pra deixar fixo
                    
 default_params = {
-    'max_num_iteration': num_generations,
-    'population_size':   population_size,
-    'elit_ratio':        elite_ratio,
+    'elit_ratio': elite_ratio,
 
     'mutation_probability': mutation_probability,
     'mutation_type':        mutation_type,
@@ -50,8 +52,12 @@ default_params = {
 
     'selection_type': selection_type,
 
+    'max_num_iteration': num_generations,
+    'population_size':   population_size,
+
     'max_iteration_without_improv': None,
 }
+
 
 ## parâmetros da avaliação
 num_experiments = 10
@@ -63,10 +69,7 @@ field_info = NamedTuple("field_info", [
 ])
 
 hyperfields: dict[str, field_info] = {
-    'max_num_iteration': field_info(np.arange(5, 105, 100//6), None, ''),
-    'population_size':   field_info(np.arange(5, 155, 150//6), None, ''),
-
-    'elit_ratio':            field_info(np.linspace(.01, .50, num=3), None, '.2f'),
+    'elit_ratio':            field_info(np.linspace(.00, .50, num=4), None, '.2f'),
     'mutation_probability':  field_info(np.linspace(.01, .70, num=5), None, '.2f'),
     'crossover_probability': field_info(np.linspace(.01, .90, num=5), None, '.2f'),
     'parents_portion':       field_info(np.linspace(.01, .90, num=5), None, '.2f'),
@@ -78,9 +81,6 @@ hyperfields: dict[str, field_info] = {
         'gauss_by_x',
         #'uniform_discrete',
     ), None, ''),
-
-    # nesse caso, como são duas variáveis, o crossover só seria significantemente
-    # diferente reordenando ou combinando os valores dos genes
     'crossover_type': field_info((
         'uniform',
         'one_point',
@@ -98,12 +98,13 @@ hyperfields: dict[str, field_info] = {
         'fully_random',
     ), None, ''),
 
-    'max_iteration_without_improv': field_info((
-        None, 1, 3, 7, 15,
-    ), None, ''), #!
+    'max_iteration_without_improv': field_info((None, 1, 3, 7, 15,), None, ''),
+
+    'max_num_iteration': field_info(np.arange(5, 105, 100//6), None, ''),
+    'population_size':   field_info(np.arange(5, 155, 150//6), None, ''),
 }
 
-## roda a simulação e salva o resultado das parametrizações
+## roda a simulação e salva o resultado das parametrizações em arquivos na pasta {PLOT_DIR}
 for param, (universe, num_exps, fmt) in hyperfields.items():
     num_exps = num_experiments if num_exps is None else num_exps
 
@@ -133,5 +134,5 @@ for param, (universe, num_exps, fmt) in hyperfields.items():
         plt.plot([curr_sz-1], [avgs[-1]],
                  marker='o', color=last_color)
 
-    plt.savefig(f"graficos/{param}.png")
+    plt.savefig(f"./{PLOT_DIR}/{param}.png")
     plt.cla()
