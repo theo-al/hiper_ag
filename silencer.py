@@ -3,6 +3,7 @@ from os  import devnull
  
 from contextlib import redirect_stdout, redirect_stderr, contextmanager
 
+
 @contextmanager
 def silence(out=True, err=False):
     null = open(devnull, 'w')

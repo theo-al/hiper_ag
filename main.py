@@ -3,7 +3,7 @@ from   numpy.typing import NDArray
 
 import matplotlib.pyplot as plt
 
-from hyper_eval import make_model, get_simulation_info
+from hyper_eval import get_simulation_info
 from typing     import NamedTuple, Iterable, Optional
 
 
@@ -104,6 +104,7 @@ hyperfields: dict[str, field_info] = {
     'population_size':   field_info(np.arange(5, 155, 150//6), None, ''),
 }
 
+
 ## roda a simulação e salva o resultado das parametrizações em arquivos na pasta {PLOT_DIR}
 for param, (universe, num_exps, fmt) in hyperfields.items():
     num_exps = num_experiments if num_exps is None else num_exps
@@ -115,9 +116,8 @@ for param, (universe, num_exps, fmt) in hyperfields.items():
         print(f'parâmetro atual: {param}; amostra atual: {sample:{fmt}}')
 
         params[param] = sample
-        try:
-            model = make_model(params, var_bounds)
-            avgs, curr_sz = get_simulation_info(model, num_exps, func=Rastrigin)
+        try: avgs, curr_sz = get_simulation_info(params, var_bounds,
+                                                 num_exps, func=Rastrigin)
         except (AssertionError, ZeroDivisionError) as e:
             print(f"{param}={sample}: {e}")
             continue

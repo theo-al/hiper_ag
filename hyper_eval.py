@@ -33,14 +33,16 @@ def make_model(params: dict,
 
     with silence(out=False, err=True):
         model = gen_alg2(variable_boundaries=var_bounds,
-                        variable_type=var_types,
-                        dimension=num_vars,
-                        algorithm_parameters=params)
+                         variable_type=var_types,
+                         dimension=num_vars,
+                         algorithm_parameters=params)
 
     return model
 
-def get_simulation_info(model: gen_alg2, num_experiments: int, *,
+def get_simulation_info(params: dict, var_bounds: NDArray, num_experiments: int, *,
                         func: Callable[[NDArray], float], verbosity=0) -> list[float]:
+    model = make_model(params, var_bounds)
+
     num_generations = model.param.max_num_iteration
 
     ga_out, ga_err = verbosity < 2, verbosity < 1
@@ -48,7 +50,6 @@ def get_simulation_info(model: gen_alg2, num_experiments: int, *,
     simulation_szs = np.zeros(num_experiments)
     simulations = np.zeros((num_experiments,
                             num_generations))
-
     for i in range(num_experiments):
         with silence(ga_out, ga_err):
             solution = model.run(function=func,
@@ -91,3 +92,5 @@ def get_simulation_info(model: gen_alg2, num_experiments: int, *,
 
     avg_num_gens = np.sum(simulation_szs)/num_experiments
     return simulation_averages, avg_num_gens
+
+#def get_hyperparams_evaluations(): ...
