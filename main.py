@@ -4,9 +4,10 @@ from   numpy.typing import NDArray
 import matplotlib.pyplot as plt
 
 from hyper_eval import make_model, get_simulation_info
+from typing     import NamedTuple, Iterable, Optional
 
  
-## Função do problema
+## função do problema
 def Rastrigin(X: NDArray):
     return np.sum(np.square(X) - 10*np.cos(2*np.pi*X) + 10)
 
@@ -35,7 +36,7 @@ crossover_type = 'one_point'
 selection_type = 'roulette'
 mutation_type  = 'uniform_by_center' # acho que é pra deixar fixo
                    
-hyperparams = {
+default_params = {
     'max_num_iteration': num_generations,
     'population_size':   population_size,
     'elit_ratio':        elite_ratio,
@@ -55,33 +56,39 @@ hyperparams = {
 ## parâmetros da avaliação
 num_experiments = 10
 
-universes = {
-    'max_num_iteration': np.arange(5, 105, 100//6),
-    'population_size':   np.arange(5, 155, 150//6),
+field_info = NamedTuple("field_info", [
+    ("universe",        Iterable[float | int | str]),
+    ("num_experiments", Optional[int]),
+    ("format",          str),
+])
 
-    'elit_ratio':            np.linspace(.01, .50, num=3),
-    'mutation_probability':  np.linspace(.01, .70, num=5),
-    'crossover_probability': np.linspace(.01, .90, num=5),
-    'parents_portion':       np.linspace(.01, .90, num=5),
+hyperfields: dict[str, field_info] = {
+    'max_num_iteration': field_info(np.arange(5, 105, 100//6), None, ''),
+    'population_size':   field_info(np.arange(5, 155, 150//6), None, ''),
 
-    'mutation_type': (
+    'elit_ratio':            field_info(np.linspace(.01, .50, num=3), None, '.2f'),
+    'mutation_probability':  field_info(np.linspace(.01, .70, num=5), None, '.2f'),
+    'crossover_probability': field_info(np.linspace(.01, .90, num=5), None, '.2f'),
+    'parents_portion':       field_info(np.linspace(.01, .90, num=5), None, '.2f'),
+
+    'mutation_type': field_info((
         'uniform_by_x',
         'uniform_by_center',
         'gauss_by_center',
         'gauss_by_x',
         #'uniform_discrete',
-    ),
+    ), None, ''),
 
     # nesse caso, como são duas variáveis, o crossover só seria significantemente
     # diferente reordenando ou combinando os valores dos genes
-    'crossover_type': (
+    'crossover_type': field_info((
         'uniform',
         'one_point',
         'two_point',
         'segment',
         'shuffle',
-    ),
-    'selection_type': (
+    ), None, ''),
+    'selection_type': field_info((
         'roulette',
         'ranking',
         'linear_ranking',
@@ -89,51 +96,42 @@ universes = {
         'sigma_scaling',
         'stochastic',
         'fully_random',
-    ),
+    ), None, ''),
 
-    'max_iteration_without_improv': (None, 1, 3, 7, 15), #!
-}
-fmts = {
-    'max_num_iteration': '',
-    'population_size':   '',
-
-    'elit_ratio':            '.2f',
-    'mutation_probability':  '.2f',
-    'crossover_probability': '.2f',
-    'parents_portion':       '.2f',
-
-    'mutation_type':  '',
-    'crossover_type': '',
-    'selection_type': '',
-    'max_iteration_without_improv': '',
+    'max_iteration_without_improv': field_info((
+        None, 1, 3, 7, 15,
+    ), None, ''), #!
 }
 
 ## roda a simulação e salva o resultado das parametrizações
-for param in hyperparams:
-    params = hyperparams.copy()
-    fmt = fmts[param]
+for param, (universe, num_exps, fmt) in hyperfields.items():
+    num_exps = num_experiments if num_exps is None else num_exps
 
-    for sample in universes[param]:
-        print('------------------------------------------------------------------------')    
+    plt.title(param, loc='center')
+    params = default_params.copy()
+    for sample in universe:
+        print('--------------------------------------------------------')    
         print(f'parâmetro atual: {param}; amostra atual: {sample:{fmt}}')
 
         params[param] = sample
         try:
             model = make_model(params, var_bounds)
-            avgs, curr_sz = get_simulation_info(model, num_experiments, func=Rastrigin)
+            avgs, curr_sz = get_simulation_info(model, num_exps, func=Rastrigin)
         except (AssertionError, ZeroDivisionError) as e:
             print(f"{param}={sample}: {e}")
             continue
 
         print(f'Valores médios dos melhores por Geração:')
         print(avgs)
+        
+        # plota resultado do experimento
+        plt.plot(avgs, label=f'={sample:{fmt}}')
+        plt.legend(loc='upper right')
 
-        plt.plot(avgs, label=f'{param}={sample:{fmt}}')
+        # plota última geração
         last_color = plt.gca().lines[-1].get_color()
         plt.plot([curr_sz-1], [avgs[-1]],
                  marker='o', color=last_color)
-        plt.legend(loc='upper right')
 
-    #! setar seed
     plt.savefig(f"graficos/{param}.png")
     plt.cla()
