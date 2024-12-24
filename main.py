@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from hyper_eval import get_simulation_info
 from typing     import NamedTuple, Iterable, Optional
 
+from sys import argv
 
 ## constantes e tipos
 PLOT_DIR = 'graficos'
@@ -68,10 +69,10 @@ default_params = {
 num_experiments = 10
 
 hyperfields: dict[str, field_info] = {
-    'elit_ratio':            field_info(np.linspace(.00, .50, num=50), fmt='.2f'),
-    'parents_portion':       field_info(np.linspace(.01, .90, num=5),  fmt='.2f'),
-    'mutation_probability':  field_info(np.linspace(.01, .70, num=5),  fmt='.2f'),
-    'crossover_probability': field_info(np.linspace(.01, .90, num=5),  fmt='.2f'),
+    'elit_ratio':            field_info(np.linspace(.05, .15, num=6),  fmt='.2f'),
+    'parents_portion':       field_info(np.linspace(.20, .50, num=6),  fmt='.2f'),
+    'mutation_probability':  field_info(np.linspace(.25, .40, num=5),  fmt='.2f'),
+    'crossover_probability': field_info(np.linspace(.10, .90, num=10), fmt='.2f'),
 
     'mutation_type': field_info((
         'uniform_by_x',
@@ -95,19 +96,42 @@ hyperfields: dict[str, field_info] = {
         'two_point',
         'segment',
         'shuffle',
-    ), num_exps=num_experiments*3),
+    ), num_exps=num_experiments*2),
 
-    'max_iteration_without_improv': field_info((None, 1, 3, 7, 15,),
-                                               num_exps=num_experiments*3),
+    'population_size':   field_info((10, 50, 100, 160)),
+    'max_num_iteration': field_info((10, 50, 100)),
 
-    'max_num_iteration': field_info(np.arange(5, 105, 100//6)),
-    'population_size':   field_info(np.arange(10, 160, 150//6)),
+    #'max_iteration_without_improv': field_info((None, 1, 3, 10, 20, 30),
+    #                                           num_exps=num_experiments*3),
 }
+
+## novos parâmetros
+default_params.update({
+    'crossover_probability': .90,
+    'mutation_probability':  .40,
+
+    'elit_ratio':      .09,
+    'parents_portion': .45,
+
+    'crossover_type': 'uniform',
+    'selection_type': 'tournament',
+    'mutation_type':  'uniform_by_center',
+
+    'max_num_iteration': 80,
+    'max_iteration_without_improv': 23,
+})
 
 
 ## roda a simulação e salva o resultado das parametrizações em arquivos na pasta {PLOT_DIR}
+override = None if len(argv) <= 1 else argv[1]
+
 for param, (universe, num_exps, fmt) in hyperfields.items():
     num_exps = num_experiments if num_exps is None else num_exps
+
+    if override:
+        if   param == override: num_exps *= 2
+        elif param != "max_iteration_without_improvement" and \
+             param != "max_num_iteration": continue
 
     plt.title(param, loc='center')
     plt.ylabel("avaliação"), plt.xlabel("nº gerações")
@@ -143,7 +167,7 @@ for param, (universe, num_exps, fmt) in hyperfields.items():
         # plota valores da última geração
         plt.plot([last_x], [last_y], marker='o', color=last_color)
         plt.annotate(text=f"{last_y:.4f}", xy=(last_x, last_y),
-                     xytext=(11,-2), textcoords='offset points', 
+                     xytext=(-10,15), textcoords='offset points', 
                      fontsize=11, color=last_color)
 
     plt.savefig(f"./{PLOT_DIR}/{param}.png")

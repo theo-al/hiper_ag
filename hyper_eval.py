@@ -82,7 +82,7 @@ def get_simulation_info(params: dict, var_bounds: NDArray, num_experiments: int,
         convergence   = np.array(model.report)
         curr_num_gens = len(convergence)
         simulations[i] = np.append(
-            convergence, np.full(num_generations - curr_num_gens, None)
+            convergence, np.full(num_generations - curr_num_gens, convergence[-1])
         )
         simulation_szs[i] = curr_num_gens
 
