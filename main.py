@@ -44,7 +44,7 @@ parents_portion = .1 # zero significa que toda a população é
                     
 crossover_type = 'one_point'
 selection_type = 'roulette'
-mutation_type  = 'uniform_by_center' # acho que é pra deixar fixo
+mutation_type  = 'uniform_by_center'
                    
 default_params = {
     'elit_ratio': elite_ratio,
@@ -68,13 +68,13 @@ default_params = {
 ## novos parâmetros
 default_params.update({
     'crossover_probability': .46,
-    'mutation_probability':  .34,
+    'mutation_probability':  .40, #.34,
 
-    'elit_ratio':      .09,
+    'elit_ratio':      .10, #.09,
     'parents_portion': .23,
 
-    'crossover_type': 'segment',
-    'selection_type': 'tournament',
+    'crossover_type': 'shuffle', #'segment',
+    'selection_type': 'linear_ranking', #'tournament',
     'mutation_type':  'gauss_by_x',
 
     'max_num_iteration': 100,
@@ -89,7 +89,7 @@ num_experiments = 10
 hyperfields: dict[str, field_info] = {
     'elit_ratio':            field_info(np.linspace(.06, .14, num=7),  fmt='.2f'),
     'parents_portion':       field_info(np.linspace(.20, .50, num=8),  fmt='.2f'),
-    'mutation_probability':  field_info(np.linspace(.25, .40, num=8),  fmt='.2f'),
+    'mutation_probability':  field_info((.33, .34, .35, .44, .45),     fmt='.2f'),
     'crossover_probability': field_info(np.linspace(.24, .90, num=10), fmt='.2f'),
 
     'mutation_type': field_info((
@@ -124,13 +124,13 @@ hyperfields: dict[str, field_info] = {
 }
 
 ## roda a simulação e salva o resultado das parametrizações em arquivos na pasta {PLOT_DIR}
-override = None if len(argv) <= 1 else argv[1]
+override = None if len(argv) <= 1 else argv[1:]
 
 for param, (universe, num_exps, fmt) in hyperfields.items():
     num_exps = num_experiments if num_exps is None else num_exps
 
     if override:
-        if   param == override: num_exps *= 2
+        if   param in override: num_exps *= 2
         elif param != "max_iteration_without_improvement" and \
              param != "max_num_iteration": continue
 
