@@ -68,20 +68,19 @@ default_params = {
 ## novos parâmetros
 default_params.update({
     'crossover_probability': .46,
-    'mutation_probability':  .40, #.34,
+    'mutation_probability':  .44,
 
-    'elit_ratio':      .10, #.09,
+    'elit_ratio':      .10,
     'parents_portion': .23,
 
-    'crossover_type': 'shuffle', #'segment',
-    'selection_type': 'linear_ranking', #'tournament',
+    'crossover_type': 'segment',
+    'selection_type': 'linear_ranking',
     'mutation_type':  'gauss_by_x',
 
-    'max_num_iteration': 100,
+    'max_num_iteration': 50,
     'population_size':   160,
-    'max_iteration_without_improv': 25, #!
+    'max_iteration_without_improv': 25,
 })
-
 
 ## parâmetros da avaliação
 num_experiments = 10
@@ -119,7 +118,7 @@ hyperfields: dict[str, field_info] = {
     'population_size':   field_info((20, 50, 80, 100, 130, 160)),
     'max_num_iteration': field_info((10, 50, 100)),
 
-    'max_iteration_without_improv': field_info((None, 1, 3, 10, 20, 30),
+    'max_iteration_without_improv': field_info((None, 1, 3, 5, 10, 20, 30),
                                                num_exps=num_experiments*3),
 }
 
