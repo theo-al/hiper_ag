@@ -7,9 +7,14 @@ from hyper_eval import get_simulation_info
 from typing     import NamedTuple, Iterable, Optional
 
 
-## constantes
+## constantes e tipos
 PLOT_DIR = 'graficos'
  
+class field_info(NamedTuple):
+    universe: Iterable[float | int | str]
+    num_exps: Optional[int] = None
+    fmt:      str           = ''
+
 
 ## função do problema
 def Rastrigin(X: NDArray):
@@ -21,14 +26,14 @@ num_vars = 2
 var_bounds = np.array([[-5.12, 5.12]]*num_vars)
 
 
-## parâmetros do AG
+## parâmetros "padrão" do AG
 num_generations      = 20
 population_size      = 100
 mutation_probability = .001
 
-elite_ratio = .1 # percentual de individuos preservados na próxima geracao
+elite_ratio = .1 # percentual de indivíduos preservados na próxima geração
                  # com zero o algoritmo genético implementa um algoritmo genético 
-                 # padrão em vez do GA elitista;
+                 # padrão em vez do AG elitista;
             
 crossover_probability = .6
 parents_portion = .1 # zero significa que toda a população é 
@@ -62,17 +67,11 @@ default_params = {
 ## parâmetros da avaliação
 num_experiments = 10
 
-field_info = NamedTuple("field_info", [
-    ("universe",        Iterable[float | int | str]),
-    ("num_experiments", Optional[int]),
-    ("format",          str),
-])
-
 hyperfields: dict[str, field_info] = {
-    'elit_ratio':            field_info(np.linspace(.00, .50, num=4), None, '.2f'),
-    'mutation_probability':  field_info(np.linspace(.01, .70, num=5), None, '.2f'),
-    'crossover_probability': field_info(np.linspace(.01, .90, num=5), None, '.2f'),
-    'parents_portion':       field_info(np.linspace(.01, .90, num=5), None, '.2f'),
+    'elit_ratio':            field_info(np.linspace(.00, .50, num=50), fmt='.2f'),
+    'parents_portion':       field_info(np.linspace(.01, .90, num=5),  fmt='.2f'),
+    'mutation_probability':  field_info(np.linspace(.01, .70, num=5),  fmt='.2f'),
+    'crossover_probability': field_info(np.linspace(.01, .90, num=5),  fmt='.2f'),
 
     'mutation_type': field_info((
         'uniform_by_x',
@@ -80,14 +79,7 @@ hyperfields: dict[str, field_info] = {
         'gauss_by_center',
         'gauss_by_x',
         #'uniform_discrete',
-    ), None, ''),
-    'crossover_type': field_info((
-        'uniform',
-        'one_point',
-        'two_point',
-        'segment',
-        'shuffle',
-    ), None, ''),
+    )),
     'selection_type': field_info((
         'roulette',
         'ranking',
@@ -96,12 +88,20 @@ hyperfields: dict[str, field_info] = {
         'sigma_scaling',
         'stochastic',
         'fully_random',
-    ), None, ''),
+    )),
+    'crossover_type': field_info((
+        'uniform',
+        'one_point',
+        'two_point',
+        'segment',
+        'shuffle',
+    ), num_exps=num_experiments*3),
 
-    'max_iteration_without_improv': field_info((None, 1, 3, 7, 15,), None, ''),
+    'max_iteration_without_improv': field_info((None, 1, 3, 7, 15,),
+                                               num_exps=num_experiments*3),
 
-    'max_num_iteration': field_info(np.arange(5, 105, 100//6), None, ''),
-    'population_size':   field_info(np.arange(5, 155, 150//6), None, ''),
+    'max_num_iteration': field_info(np.arange(5, 105, 100//6)),
+    'population_size':   field_info(np.arange(10, 160, 150//6)),
 }
 
 
@@ -110,29 +110,41 @@ for param, (universe, num_exps, fmt) in hyperfields.items():
     num_exps = num_experiments if num_exps is None else num_exps
 
     plt.title(param, loc='center')
+    plt.ylabel("avaliação"), plt.xlabel("nº gerações")
+
+    plt.gca().xaxis.set_major_locator(plt.MultipleLocator(5)) # marca cada 5 gerações
+    plt.gca().xaxis.set_minor_locator(plt.MultipleLocator(1)) # marca cada geração
+
     params = default_params.copy()
     for sample in universe:
-        print('--------------------------------------------------------')    
-        print(f'parâmetro atual: {param}; amostra atual: {sample:{fmt}}')
-
         params[param] = sample
-        try: avgs, curr_sz = get_simulation_info(params, var_bounds,
-                                                 num_exps, func=Rastrigin)
+
+        # computa se puder
+        try:
+            print('--------------------------------------------------------')    
+            print(f'parâmetro atual: {param}; amostra atual: {sample:{fmt}}')
+            avgs, curr_sz = get_simulation_info(params, var_bounds,
+                                                num_exps, func=Rastrigin)
+            print(f'valores médios dos melhores por geração:')
+            print(avgs)
+
         except (AssertionError, ZeroDivisionError) as e:
-            print(f"{param}={sample}: {e}")
+            print(f"erro: {param}={sample}: {str(e).strip()}")
             continue
 
-        print(f'Valores médios dos melhores por Geração:')
-        print(avgs)
-        
         # plota resultado do experimento
-        plt.plot(avgs, label=f'={sample:{fmt}}')
+        plt.plot(avgs, label=f'com {sample:{fmt}}')
         plt.legend(loc='upper right')
 
-        # plota última geração
+        # pega valores pros próximos plots
         last_color = plt.gca().lines[-1].get_color()
-        plt.plot([curr_sz-1], [avgs[-1]],
-                 marker='o', color=last_color)
+        last_x, last_y = curr_sz-1, avgs[-1]
+
+        # plota valores da última geração
+        plt.plot([last_x], [last_y], marker='o', color=last_color)
+        plt.annotate(text=f"{last_y:.4f}", xy=(last_x, last_y),
+                     xytext=(11,-2), textcoords='offset points', 
+                     fontsize=11, color=last_color)
 
     plt.savefig(f"./{PLOT_DIR}/{param}.png")
     plt.cla()
