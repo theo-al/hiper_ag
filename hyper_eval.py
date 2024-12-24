@@ -90,7 +90,7 @@ def get_simulation_info(params: dict, var_bounds: NDArray, num_experiments: int,
     for i, gen in enumerate(simulations.transpose()):
         simulation_averages[i] = np.sum(gen)/num_experiments
 
-    avg_num_gens = np.sum(simulation_szs)/num_experiments
+    avg_num_gens = int(np.sum(simulation_szs)//num_experiments)
     return simulation_averages, avg_num_gens
 
 #def get_hyperparams_evaluations(): ...

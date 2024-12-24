@@ -65,14 +65,32 @@ default_params = {
 }
 
 
+## novos parâmetros
+default_params.update({
+    'crossover_probability': .46,
+    'mutation_probability':  .34,
+
+    'elit_ratio':      .09,
+    'parents_portion': .23,
+
+    'crossover_type': 'segment',
+    'selection_type': 'tournament',
+    'mutation_type':  'gauss_by_x',
+
+    'max_num_iteration': 100,
+    'population_size':   160,
+    'max_iteration_without_improv': 25, #!
+})
+
+
 ## parâmetros da avaliação
 num_experiments = 10
 
 hyperfields: dict[str, field_info] = {
-    'elit_ratio':            field_info(np.linspace(.05, .15, num=6),  fmt='.2f'),
-    'parents_portion':       field_info(np.linspace(.20, .50, num=6),  fmt='.2f'),
-    'mutation_probability':  field_info(np.linspace(.25, .40, num=5),  fmt='.2f'),
-    'crossover_probability': field_info(np.linspace(.10, .90, num=10), fmt='.2f'),
+    'elit_ratio':            field_info(np.linspace(.06, .14, num=7),  fmt='.2f'),
+    'parents_portion':       field_info(np.linspace(.20, .50, num=8),  fmt='.2f'),
+    'mutation_probability':  field_info(np.linspace(.25, .40, num=8),  fmt='.2f'),
+    'crossover_probability': field_info(np.linspace(.24, .90, num=10), fmt='.2f'),
 
     'mutation_type': field_info((
         'uniform_by_x',
@@ -98,29 +116,12 @@ hyperfields: dict[str, field_info] = {
         'shuffle',
     ), num_exps=num_experiments*2),
 
-    'population_size':   field_info((10, 50, 100, 160)),
+    'population_size':   field_info((20, 50, 80, 100, 130, 160)),
     'max_num_iteration': field_info((10, 50, 100)),
 
-    #'max_iteration_without_improv': field_info((None, 1, 3, 10, 20, 30),
-    #                                           num_exps=num_experiments*3),
+    'max_iteration_without_improv': field_info((None, 1, 3, 10, 20, 30),
+                                               num_exps=num_experiments*3),
 }
-
-## novos parâmetros
-default_params.update({
-    'crossover_probability': .90,
-    'mutation_probability':  .40,
-
-    'elit_ratio':      .09,
-    'parents_portion': .45,
-
-    'crossover_type': 'uniform',
-    'selection_type': 'tournament',
-    'mutation_type':  'uniform_by_center',
-
-    'max_num_iteration': 80,
-    'max_iteration_without_improv': 23,
-})
-
 
 ## roda a simulação e salva o resultado das parametrizações em arquivos na pasta {PLOT_DIR}
 override = None if len(argv) <= 1 else argv[1]
@@ -133,12 +134,14 @@ for param, (universe, num_exps, fmt) in hyperfields.items():
         elif param != "max_iteration_without_improvement" and \
              param != "max_num_iteration": continue
 
+    # coloca o título e labels nos eixos do gráfico
     plt.title(param, loc='center')
     plt.ylabel("avaliação"), plt.xlabel("nº gerações")
 
     plt.gca().xaxis.set_major_locator(plt.MultipleLocator(5)) # marca cada 5 gerações
     plt.gca().xaxis.set_minor_locator(plt.MultipleLocator(1)) # marca cada geração
 
+    # passa por todas as possibilidades
     params = default_params.copy()
     for sample in universe:
         params[param] = sample
@@ -150,9 +153,10 @@ for param, (universe, num_exps, fmt) in hyperfields.items():
             avgs, curr_sz = get_simulation_info(params, var_bounds,
                                                 num_exps, func=Rastrigin)
             print(f'valores médios dos melhores por geração:')
-            print(avgs)
+            print(curr_sz) #!
+            print(avgs[:curr_sz])
 
-        except (AssertionError, ZeroDivisionError) as e:
+        except (AssertionError, ZeroDivisionError, ValueError) as e:
             print(f"erro: {param}={sample}: {str(e).strip()}")
             continue
 
@@ -170,5 +174,6 @@ for param, (universe, num_exps, fmt) in hyperfields.items():
                      xytext=(-10,15), textcoords='offset points', 
                      fontsize=11, color=last_color)
 
+    # salva o plot
     plt.savefig(f"./{PLOT_DIR}/{param}.png")
     plt.cla()
